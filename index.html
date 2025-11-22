@@ -12,15 +12,14 @@
         import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, writeBatch, runTransaction, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- FIREBASE CONFIGURATION ---
-          const firebaseConfig = {
-    apiKey: "AIzaSyBFJEJB3NkTvCbjaHcGWMS2AqQzW3g7FGU",
-    authDomain: "waddledeethesite.firebaseapp.com",
-    projectId: "waddledeethesite",
-    storageBucket: "waddledeethesite.firebasestorage.app",
-    messagingSenderId: "79857052532",
-    appId: "1:79857052532:web:9fbe8e815b6e1dd167da21",
-    measurementId: "G-TLZMM19JRQ"
-  };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "AIzaSyBFJEJB3NkTvCbjaHcGWMS2AqQzW3g7FGU",
+  authDomain: "waddledeethesite.firebaseapp.com",
+  projectId: "waddledeethesite",
+  storageBucket: "waddledeethesite.firebasestorage.app",
+  messagingSenderId: "79857052532",
+  appId: "1:79857052532:web:9fbe8e815b6e1dd167da21"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -75,7 +74,8 @@
                     await batch.commit();
                 }
 
-                const gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_state');
+                // FIXED: Added '/global' to make the path 6 segments long (Even number required for Docs)
+                const gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_state', 'global');
                 const gameSnap = await getDoc(gameStateRef);
                 if (!gameSnap.exists()) {
                     await setDoc(gameStateRef, {
@@ -92,6 +92,7 @@
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
+                    // Anonymous auth is cleaner for read-only access first
                     await signInAnonymously(auth);
                 }
                 window.dispatchEvent(new Event('firebase-ready'));
@@ -289,8 +290,6 @@
 
         #peekDee { position: fixed; bottom: -100px; right: -200px; width: 180px; transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 4000; filter: drop-shadow(-5px 0 10px rgba(0,0,0,0.2)); }
         
-        /* Removed broken loader styles */
-
         .toast {
             position: absolute; top: 110px; right: 20px; background: white; color: var(--text-dark); padding: 15px 25px; border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2); font-family: 'Fredoka'; font-weight: 600; z-index: 10000;
@@ -874,8 +873,8 @@
         let globalProb = 0.001;
 
         function initGameListeners(uid) {
-            // Global Prob Listener
-            window.onSnapshot(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state'), (doc) => {
+            // Global Prob Listener - FIXED PATH
+            window.onSnapshot(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state', 'global'), (doc) => {
                 if(doc.exists()) {
                     globalProb = doc.data().globalProbability || 0.001;
                     const pct = Math.min(globalProb, 100).toFixed(3);
@@ -911,7 +910,8 @@
             stage.appendChild(popup);
 
             try {
-                const gameRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state');
+                // FIXED PATHS FOR TRANSACTION
+                const gameRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state', 'global');
                 const userStatRef = window.doc(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'game_stats');
 
                 await window.runTransaction(window.db, async (transaction) => {
