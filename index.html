@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>waddlOS - Kirby Air Ride Hub</title>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, doc, deleteDoc, getDocs, writeBatch, runTransaction, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Global Firebase exports
+        window.db = db;
+        window.auth = auth;
+        window.collection = collection;
+        window.addDoc = addDoc;
+        window.query = query;
+        window.orderBy = orderBy;
+        window.onSnapshot = onSnapshot;
+        window.doc = doc;
+        window.deleteDoc = deleteDoc;
+        window.appId = appId;
+        window.provider = new GoogleAuthProvider();
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.signInWithCustomToken = signInWithCustomToken;
+        window.runTransaction = runTransaction;
+        window.updateDoc = updateDoc;
+        window.getDoc = getDoc;
+        window.setDoc = setDoc;
+
+        // Auto-seed function
+        async function seedDatabaseIfEmpty() {
+            try {
+                const newsRef = collection(db, 'artifacts', appId, 'public', 'data', 'news');
+                const snapshot = await getDocs(newsRef);
+                if (snapshot.empty) {
+                    const batch = writeBatch(db);
+                    const seedData = [
+                        {
+                            title: "City Trial: New Events Discovered?",
+                            content: "Players have reported seeing a new variation of the Dyna Blade event in City Trial mode. Is this a glitch or a hidden feature unlockable after 20 years?",
+                            img: "https://mario.wiki.gallery/images/thumb/c/c6/KAirRide_City_Trial.png/1200px-KAirRide_City_Trial.png",
+                            tag: "Rumor",
+                            timestamp: Date.now()
+                        },
+                        {
+                            title: "Top 5 Legendary Machines",
+                            content: "We ranked the Dragoon vs the Hydra. While the Hydra packs a punch, the Dragoon's flight capabilities make it the king of the skies.",
+                            img: "https://mario.wiki.gallery/images/thumb/0/05/Dragoon_KAirRide.png/1200px-Dragoon_KAirRide.png",
+                            tag: "Meta",
+                            timestamp: Date.now() - 10000
+                        }
+                    ];
+                    seedData.forEach(item => batch.set(doc(newsRef), item));
+                    await batch.commit();
+                }
+
+                // Initialize Game State if missing
+                const gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_state');
+                const gameSnap = await getDoc(gameStateRef);
+                if (!gameSnap.exists()) {
+                    await setDoc(gameStateRef, {
+                        globalProbability: 0.001,
+                        lastWinner: "None",
+                        jackpotPool: 0
+                    });
+                }
+            } catch (e) { console.error("Error seeding:", e); }
+        }
+        
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                window.dispatchEvent(new Event('firebase-ready'));
+                seedDatabaseIfEmpty();
+            } catch (e) {
+                console.error("Auth failed:", e);
+                window.dispatchEvent(new Event('firebase-ready'));
+            }
+        };
+        initAuth();
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;600;700&family=Nunito:wght@400;600;800;900&family=Segoe+UI:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* --- CUSTOM CURSORS --- */
+        :root {
+            --cursor-normal: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.5 3.5L11.5 20.5L14.5 13.5L20.5 10.5L5.5 3.5Z" fill="white" stroke="black" stroke-width="1.5" stroke-linejoin="round"/></svg>') 0 0, auto;
+            --cursor-hover: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 12L5 9L12 2L19 9L16 12V18C16 20.2091 14.2091 22 12 22C9.79086 22 8 20.2091 8 18V12Z" fill="%23FF8F45" stroke="black" stroke-width="1.5"/><path d="M12 13V18" stroke="black" stroke-width="1.5" stroke-linecap="round"/></svg>') 12 2, pointer;
+            --cursor-click: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="%23FFD54F" stroke="black" stroke-width="2"/></svg>') 12 12, move;
+        }
+
+        body, .window { cursor: var(--cursor-normal); }
+        button, a, .desktop-icon, .nav-btn, .news-card, .machine-card, .code-pill, .control-btn, .favorite-btn, .back-btn, .task-icon, .waddle-clicker { cursor: var(--cursor-hover); }
+        button:active, a:active, .desktop-icon:active, .nav-btn:active, .waddle-clicker:active { cursor: var(--cursor-click); }
+
+        /* --- STYLES --- */
+        :root {
+            --win-bg: #f3f3f3;
+            --taskbar-bg: rgba(243, 243, 243, 0.85);
+            --accent: #0067c0;
+        }
+
+        body {
+            margin: 0; overflow: hidden; font-family: 'Segoe UI', sans-serif;
+            background: url('https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOSThumbnail.png?raw=true') no-repeat center center fixed;
+            background-size: cover; user-select: none; height: 100vh; width: 100vw;
+        }
+
+        .desktop-grid {
+            display: flex; flex-direction: column; flex-wrap: wrap;
+            height: 90vh; width: fit-content; padding: 10px; gap: 10px;
+        }
+
+        .desktop-icon {
+            width: 84px; height: 90px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border-radius: 4px;
+            transition: 0.2s; text-align: center;
+        }
+        .desktop-icon:hover { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
+        .desktop-icon.active { background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.3); }
+        .icon-img { width: 48px; height: 48px; margin-bottom: 5px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .icon-label { color: white; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.8); line-height: 1.2; }
+
+        .window {
+            position: absolute; background: white; border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; overflow: hidden;
+            min-width: 300px; min-height: 200px;
+            animation: openWindow 0.2s cubic-bezier(0.1, 0.9, 0.2, 1);
+            resize: both; overflow: auto;
+        }
+        .window::-webkit-scrollbar { width: 0; height: 0; }
+        .window.maximized { top: 0 !important; left: 0 !important; width: 100% !important; height: calc(100% - 48px) !important; transform: none !important; border-radius: 0; resize: none; }
+        .window.minimized { transform: scale(0.8) translateY(100vh); opacity: 0; pointer-events: none; }
+        @keyframes openWindow { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .title-bar { height: 32px; min-height: 32px; background: #f0f0f0; display: flex; justify-content: space-between; align-items: center; padding-left: 10px; user-select: none; }
+        .title-drag-area { flex-grow: 1; height: 100%; display: flex; align-items: center; font-size: 12px; color: #666; }
+        .window-controls { display: flex; height: 100%; }
+        .control-btn { width: 46px; height: 100%; display: flex; justify-content: center; align-items: center; transition: 0.2s; font-size: 10px; }
+        .control-btn:hover { background: #e0e0e0; }
+        .close-btn:hover { background: #c42b1c; color: white; }
+        .window-content { flex-grow: 1; position: relative; overflow: hidden; background: white; display: flex; flex-direction: column; }
+
+        .browser-bar { height: 40px; min-height: 40px; background: #f9f9f9; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; padding: 0 10px; gap: 10px; }
+        .url-input { flex-grow: 1; background: white; border: 1px solid #ddd; border-radius: 20px; padding: 4px 15px; font-size: 12px; color: #555; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+
+        #taskbar { position: absolute; bottom: 0; left: 0; width: 100%; height: 48px; background: var(--taskbar-bg); backdrop-filter: blur(20px); display: flex; justify-content: center; align-items: center; border-top: 1px solid rgba(255,255,255,0.2); z-index: 9999; }
+        .taskbar-icons { display: flex; gap: 4px; height: 100%; align-items: center; }
+        .task-icon { width: 40px; height: 40px; border-radius: 4px; display: flex; justify-content: center; align-items: center; transition: 0.2s; position: relative; }
+        .task-icon:hover { background: rgba(255,255,255,0.4); }
+        .task-icon:active { transform: scale(0.9); }
+        .task-icon.open::after { content: ''; position: absolute; bottom: 0; width: 12px; height: 3px; background: #0067c0; border-radius: 2px; }
+        .task-icon img { width: 24px; height: 24px; }
+        .taskbar-right { position: absolute; right: 10px; display: flex; align-items: center; gap: 15px; font-size: 12px; }
+
+        .waddle-app-container {
+            width: 100%; height: 100%; position: relative; overflow-y: auto; overflow-x: hidden;
+            --orange-main: #FF8F45; --orange-dark: #E65100; --bandana-blue: #29B6F6; --dedede-red: #FF5252;
+            --text-dark: #4E342E; --glass: rgba(255, 255, 255, 0.95); --radius: 24px; --shadow-pop: 0 10px 25px -5px rgba(0,0,0,0.15);
+            background-color: var(--orange-main); font-family: 'Nunito', sans-serif; color: var(--text-dark);
+            padding-bottom: 80px; scroll-behavior: smooth;
+        }
+
+        .waddle-app-container #soulCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; background: radial-gradient(circle at 50% 50%, #FF9E5E 0%, #E65100 100%); }
+
+        .waddle-app-container header {
+            position: sticky; top: 0; width: 100%; height: 90px; background: var(--glass); backdrop-filter: blur(20px);
+            border-bottom: 5px solid var(--orange-dark); display: flex; justify-content: space-between; align-items: center;
+            padding: 0 3rem; z-index: 1000; box-shadow: 0 5px 30px rgba(0,0,0,0.1); box-sizing: border-box;
+        }
+
+        .brand-logo { height: 60px; filter: drop-shadow(0 5px 0 rgba(0,0,0,0.1)); transition: transform 0.3s; }
+        .brand-logo:hover { transform: rotate(-10deg) scale(1.1); }
+
+        .auth-btn {
+            background: #5865F2; color: white; border: none; padding: 12px 28px; border-radius: 50px;
+            font-family: 'Fredoka', sans-serif; font-weight: 800; display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 6px 0 #404EED; transition: transform 0.1s, box-shadow 0.1s; font-size: 1rem;
+        }
+        .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #404EED; }
+        .auth-btn:active { transform: translateY(4px); box-shadow: none; }
+        .google-btn { background: white; color: #444; box-shadow: 0 6px 0 #DDD; }
+        .google-btn:hover { box-shadow: 0 8px 0 #DDD; }
+
+        .user-badge { display: flex; align-items: center; gap: 12px; background: white; padding: 6px 20px 6px 6px; border-radius: 50px; border: 3px solid var(--orange-main); }
+        .user-avatar { width: 35px; height: 35px; border-radius: 50%; border: 2px solid var(--orange-dark); }
+
+        .view-container { max-width: 1400px; margin: 0 auto; padding: 20px; margin-top: 20px; display: none; opacity: 0; animation: fadeScaleUp 0.5s forwards ease-out; position: relative; z-index: 1; }
+        .view-container.active { display: block; opacity: 1; }
+        @keyframes fadeScaleUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hero-banner { text-align: center; margin-bottom: 40px; position: relative; }
+        .hero-img { max-width: 600px; width: 90%; filter: drop-shadow(0 20px 10px rgba(0,0,0,0.1)); animation: floatHero 6s ease-in-out infinite; }
+        @keyframes floatHero { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+
+        .grid-layout { display: grid; grid-template-columns: 2.5fr 1fr; gap: 40px; }
+        .news-featured {
+            background: white; border-radius: var(--radius); overflow: hidden; position: relative; border: 6px solid white;
+            box-shadow: var(--shadow-pop); transition: transform 0.3s; margin-bottom: 30px;
+        }
+        .news-featured:hover { transform: translateY(-5px); }
+        .featured-img { width: 100%; height: 400px; object-fit: cover; }
+        .featured-overlay { position: absolute; bottom: 0; left: 0; width: 100%; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); padding: 40px; color: white; box-sizing: border-box; }
+        .tag { background: var(--dedede-red); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 0.8rem; }
+
+        .widget { background: white; border-radius: var(--radius); padding: 25px; margin-bottom: 30px; border: 2px solid rgba(255,255,255,0.5); box-shadow: var(--shadow-pop); }
+        .widget-header { font-family: 'Fredoka'; font-size: 1.4rem; color: var(--orange-dark); border-bottom: 2px dashed #EEE; padding-bottom: 15px; margin-bottom: 20px; }
+        .discord-embed { background: #5865F2; color: white; border-radius: 15px; padding: 20px; text-align: center; position: relative; overflow: hidden; }
+
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 10px; background: white; padding: 10px 25px; border-radius: 50px;
+            font-weight: bold; color: var(--orange-main); margin-bottom: 30px; border: none; box-shadow: 0 5px 0 rgba(0,0,0,0.05);
+        }
+        .back-btn:hover { transform: translateX(-10px); }
+
+        .article-paper { background: white; border-radius: 30px; overflow: hidden; box-shadow: var(--shadow-pop); }
+        .article-hero { width: 100%; height: 400px; object-fit: cover; }
+        .article-body { padding: 50px; line-height: 1.8; font-size: 1.1rem; color: #444; }
+        .article-meta { display: flex; gap: 20px; color: #888; font-size: 0.9rem; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #EEE; }
+
+        .machine-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 30px; }
+        .machine-card {
+            background: white; border-radius: 25px; padding: 25px; border: 3px solid transparent;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.05); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative;
+        }
+        .machine-card:hover { transform: translateY(-15px) rotateX(5deg); border-color: var(--orange-main); box-shadow: 0 20px 40px rgba(255, 143, 69, 0.2); z-index: 5; }
+        .machine-card.official { background: linear-gradient(160deg, #FFFFFF 50%, #E1F5FE 100%); border: 3px solid var(--bandana-blue); }
+        .machine-card.featured { border: 4px solid #FFD54F; background: linear-gradient(135deg, #fff 0%, #FFF8E1 100%); box-shadow: 0 10px 30px rgba(255, 213, 79, 0.4); order: -1; }
+        
+        .verified-badge {
+            position: absolute; top: -15px; right: 20px; background: var(--bandana-blue); color: white; padding: 5px 15px;
+            border-radius: 10px; font-weight: bold; font-size: 0.8rem; box-shadow: 0 5px 10px rgba(41, 182, 246, 0.3); border: 2px solid white;
+        }
+        .featured-badge {
+            position: absolute; top: -15px; left: 20px; background: #FFD54F; color: #5D4037; padding: 5px 15px;
+            border-radius: 10px; font-weight: bold; font-size: 0.8rem; border: 2px solid white; box-shadow: 0 5px 5px rgba(0,0,0,0.1);
+        }
+
+        .machine-img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 15px; }
+        .machine-card h2, .machine-card h3 { margin: 0; font-family:'Fredoka'; font-size: 1.5rem; }
+        .machine-card p { font-size: 0.9rem; color: #666; margin-top: 5px; }
+
+        .code-pill {
+            background: #37474F; color: #69F0AE; font-family: monospace; font-size: 1.2rem; padding: 12px; border-radius: 12px;
+            text-align: center; margin-top: 15px; border: 2px dashed #546E7A; transition: 0.2s;
+        }
+        .code-pill:active { background: black; transform: scale(0.98); }
+        .code-pill:hover { border-color: #69F0AE; }
+
+        .upload-container {
+            background: white; padding: 40px; border-radius: 30px; text-align: center; border: 5px solid var(--orange-main);
+            margin-bottom: 50px; box-shadow: inset 0 0 30px rgba(255, 143, 69, 0.1);
+        }
+        .form-input { width: 80%; padding: 15px 25px; margin: 10px 0; border-radius: 15px; border: 2px solid #EEE; font-family: 'Nunito'; font-size: 1rem; transition: 0.3s; }
+        .form-input:focus { border-color: var(--orange-main); box-shadow: 0 0 0 4px rgba(255, 143, 69, 0.2); }
+        select.form-input { appearance: none; background: white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M6 9L1 4h10z"/></svg>') no-repeat right 20px center; }
+
+        #peekDee { position: fixed; bottom: -100px; right: -200px; width: 180px; transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 4000; filter: drop-shadow(-5px 0 10px rgba(0,0,0,0.2)); }
+        #loader { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--orange-main); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        .loader-bounce { width: 80px; animation: bounceLoader 0.5s infinite alternate; }
+        @keyframes bounceLoader { from { transform: translateY(0); } to { transform: translateY(-20px); } }
+
+        .toast {
+            position: absolute; top: 110px; right: 20px; background: white; color: var(--text-dark); padding: 15px 25px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); font-family: 'Fredoka'; font-weight: 600; z-index: 10000;
+            animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-left: 5px solid var(--orange-main);
+        }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .banner-wrapper { position: relative; margin-bottom: 50px; text-align: center; transition: transform 0.3s; }
+        .banner-wrapper:hover { transform: scale(1.01); }
+        .wide-banner { width: 100%; height: 220px; object-fit: cover; border-radius: 30px; border: 6px solid white; box-shadow: var(--shadow-pop); }
+        .banner-badge {
+            background: white; color: var(--text-dark); font-family: 'Fredoka'; font-size: 1.2rem; font-weight: bold; padding: 12px 40px;
+            border-radius: 50px; position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); box-shadow: 0 10px 20px rgba(0,0,0,0.1); border: 4px solid var(--orange-main); z-index: 10; white-space: nowrap;
+        }
+
+        .controls-bar { background: white; border-radius: 20px; padding: 20px; margin-bottom: 30px; box-shadow: var(--shadow-pop); display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .search-box { flex: 1; min-width: 250px; padding: 12px 20px; border-radius: 50px; border: 2px solid #EEE; font-family: 'Nunito'; font-size: 1rem; transition: 0.3s; }
+        .search-box:focus { border-color: var(--orange-main); box-shadow: 0 0 0 4px rgba(255, 143, 69, 0.2); }
+
+        .filter-btn { padding: 10px 20px; border-radius: 50px; border: 2px solid #EEE; background: white; font-family: 'Fredoka'; font-weight: 600; transition: all 0.3s; }
+        .filter-btn:hover { border-color: var(--orange-main); color: var(--orange-main); }
+        .filter-btn.active { background: var(--orange-main); color: white; border-color: var(--orange-main); }
+
+        .delete-btn {
+            position: absolute; top: 10px; right: 10px; background: #FF5252; color: white; border: none; border-radius: 5px;
+            width: 30px; height: 30px; cursor: pointer; opacity: 0; transition: opacity 0.2s; z-index: 10;
+        }
+        .machine-card:hover .delete-btn { opacity: 1; }
+
+        .game-layout { display: flex; height: 100%; flex-direction: column; align-items: center; background: #FFF3E0; padding: 20px; font-family: 'Fredoka'; position: relative; overflow: hidden; }
+        .prob-container { width: 100%; max-width: 500px; text-align: center; margin-bottom: 20px; z-index: 2; }
+        .prob-bar-bg { width: 100%; height: 30px; background: #ddd; border-radius: 15px; overflow: hidden; border: 2px solid #bbb; position: relative; }
+        .prob-bar-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); width: 0%; transition: width 0.5s; }
+        .prob-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #333; font-weight: bold; font-size: 14px; width: 100%; }
+        
+        .clicker-stage { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; width: 100%; }
+        .waddle-clicker { width: 200px; transition: transform 0.1s; user-select: none; filter: drop-shadow(0 10px 0 rgba(0,0,0,0.1)); }
+        .waddle-clicker:active { transform: scale(0.9); filter: drop-shadow(0 2px 0 rgba(0,0,0,0.1)); }
+        .waddle-clicker.cooldown { filter: grayscale(1); cursor: not-allowed; opacity: 0.7; }
+        
+        .loot-popup { position: absolute; font-size: 1.5rem; font-weight: bold; color: #E65100; animation: floatUp 1s forwards; pointer-events: none; text-align: center; width: 300px; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0) scale(0.8); } 100% { opacity: 0; transform: translateY(-100px) scale(1.2); } }
+
+        .game-stats { display: flex; gap: 20px; margin-top: 20px; background: white; padding: 10px 20px; border-radius: 50px; border: 3px solid var(--orange-main); z-index: 2; }
+        .shop-panel { position: absolute; right: 20px; top: 20px; width: 250px; background: white; padding: 15px; border-radius: 15px; border: 2px solid #eee; z-index: 3; box-shadow: 0 5px 20px rgba(0,0,0,0.1); display: none; }
+        .shop-panel.open { display: block; animation: slideIn 0.3s; }
+    </style>
+</head>
+<body>
+
+    <div class="desktop-grid">
+        <div class="desktop-icon" ondblclick="openApp('home')">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/ugly%20ahh%20home.png?raw=true" class="icon-img">
+            <div class="icon-label">Home Page</div>
+        </div>
+        
+        <div class="desktop-icon" ondblclick="openApp('garage')">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddle%20garage.png?raw=true" class="icon-img">
+            <div class="icon-label">Garage</div>
+        </div>
+
+        <div class="desktop-icon" ondblclick="openApp('community')">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/community%20thing%20ahh.png?raw=true" class="icon-img">
+            <div class="icon-label">Community</div>
+        </div>
+      
+        <div class="desktop-icon" ondblclick="openApp('clicker')">
+            <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" class="icon-img">
+            <div class="icon-label">Waddle Clicker</div>
+        </div>
+
+        <div class="desktop-icon" ondblclick="openApp('news')">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/lazynewssss.png?raw=true" class="icon-img">
+            <div class="icon-label">News</div>
+        </div>
+
+        <div class="desktop-icon" ondblclick="openApp('about')">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true" class="icon-img">
+            <div class="icon-label">About</div>
+        </div>
+    </div>
+
+    <div id="window-area">
+        
+        <div id="win-browser" class="window minimized" style="width: 1000px; height: 700px; top: 50px; left: 100px; z-index: 100;" onmousedown="focusWindow('win-browser')">
+            <div class="title-bar" ondblclick="toggleMaximize('win-browser')">
+                <div class="title-drag-area" id="drag-browser">waddle communicator 3001</div>
+                <div class="window-controls">
+                    <div class="control-btn" onclick="minimizeWindow('win-browser')"><i class="fa-solid fa-minus"></i></div>
+                    <div class="control-btn" onclick="toggleMaximize('win-browser')"><i class="fa-regular fa-square"></i></div>
+                    <div class="control-btn close-btn" onclick="closeWindow('win-browser')"><i class="fa-solid fa-xmark"></i></div>
+                </div>
+            </div>
+            <div class="browser-bar">
+                <i class="fa-solid fa-arrow-left" style="color:#888; font-size: 14px; cursor:pointer;" onclick="nav('home')"></i>
+                <i class="fa-solid fa-arrow-right" style="color:#888; font-size: 14px;"></i>
+                <i class="fa-solid fa-rotate-right" style="color:#888; font-size: 14px;" onclick="location.reload()"></i>
+                <input type="text" class="url-input" value="https://waddledee.site/hub" readonly>
+            </div>
+            <div class="window-content">
+                <div class="waddle-app-container">
+                    <canvas id="soulCanvas"></canvas>
+                    <audio id="wanya" src="https://www.myinstants.com/media/sounds/waddle-dee.mp3"></audio>
+                    
+                    <div id="loader">
+                        <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/ugly%20ahh%20home.png?raw=true" class="loader-bounce">
+                        <h2 style="color:white; font-family:'Fredoka'; margin-top:20px;">Loading waddledee.site...</h2>
+                    </div>
+
+                    <header>
+                        <div class="brand-area">
+                            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/ugly%20ahh%20home.png?raw=true" class="brand-logo" alt="Logo" onclick="nav('home')">
+                        </div>
+                        
+                        <div id="authBox">
+                        </div>
+                    </header>
+
+                    <img src="https://i.imgur.com/ZnzE5qS.png" id="peekDee" onclick="playSound()">
+
+                    <div id="home" class="view-container active">
+                        <div class="hero-banner">
+                            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlething1080512.png?raw=true" alt="Air Ride Hub" class="hero-img">
+                        </div>
+
+                        <div class="grid-layout">
+                            <div class="widget">
+                                <div class="widget-header">about waddledee.site 🤔</div>
+                                <p>Welcome to the ultimate community hub for <strong>Kirby Air Riders</strong>! This website is for connecting with other players, sharing your custom machines, checking up on the latest Kirby Air Riders info.</p>
+                                <p style="font-size:0.9rem; color:#666; margin-top:20px;"><em>Disclaimer: This is a non-profit fan project. Not affiliated with Nintendo/HAL.</em></p>
+                            </div>
+
+                             <div class="widget">
+                                <div class="widget-header">COMMUNITY HUB</div>
+                                <div class="discord-embed">
+                                    <i class="fa-brands fa-discord" style="font-size: 40px; margin-bottom: 10px;"></i>
+                                    <h3 style="margin:0;">Kirby Air Riders</h3>
+                                    <p style="margin:5px 0; font-size:0.9rem; opacity:0.8;">Join the discussion!</p>
+                                    <a href="https://discord.gg/" target="_blank" style="display:inline-block; margin-top:15px; background:white; color:#5865F2; text-decoration:none; padding:8px 20px; border-radius:20px; font-weight:bold;">JOIN SERVER</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEWS VIEW -->
+                    <div id="news" class="view-container">
+                        <div class="banner-wrapper">
+                             <h1 style="font-family:'Fredoka'; color:white; font-size:3rem; text-align:center; margin: 20px 0; text-shadow: 0 4px 0 rgba(0,0,0,0.1);">NEWS & UPDATES</h1>
+                        </div>
+
+                        <div id="newsFeed" class="grid-layout" style="grid-template-columns: 1fr;">
+                            <p style="text-align:center; color:white;">Loading news from database...</p>
+                        </div>
+                    </div>
+
+                    <!-- ARTICLE VIEW -->
+                    <div id="article-view" class="view-container">
+                        <button class="back-btn" onclick="nav('news')">
+                            <i class="fa-solid fa-arrow-left"></i> Back to News
+                        </button>
+
+                        <div class="article-paper">
+                            <img id="articleHero" src="" class="article-hero">
+                            <div class="article-body">
+                                <h1 id="articleTitle" style="font-family:'Fredoka'; font-size:3rem; color:var(--text-dark); margin-bottom:10px;"></h1>
+                                
+                                <div class="article-meta">
+                                    <span><i class="fa-solid fa-user"></i> Admin</span>
+                                    <span><i class="fa-solid fa-tag"></i> <span id="articleTag"></span></span>
+                                </div>
+
+                                <div id="articleContent"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="store" class="view-container">
+                        <div class="banner-wrapper">
+                            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlegarage1360.png?raw=true" class="wide-banner">
+                            <div class="banner-badge">✅ certified by THE waddle dee... ✅</div>
+                        </div>
+
+                        <div class="controls-bar">
+                            <input type="text" class="search-box" placeholder="🔍 Search official machines..." oninput="filterMachines('store')">
+                            <button class="filter-btn active" onclick="filterCategory('all', this, 'store')">All</button>
+                            <button class="filter-btn" onclick="filterCategory('speed', this, 'store')">⚡ Speed</button>
+                            <button class="filter-btn" onclick="filterCategory('power', this, 'store')">💪 Power</button>
+                            <button class="filter-btn" onclick="filterCategory('flight', this, 'store')">✈️ Flight</button>
+                        </div>
+
+                        <div class="machine-grid" id="storeGrid">
+                            <div class="machine-card official" data-name="warp star omega" data-cat="balanced">
+                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
+                                <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" class="machine-img">
+                                <h2 style="color:var(--bandana-blue);">Warp Star Omega</h2>
+                                <p>The gold standard. Balanced speed and turn. Excellent for beginners and pros alike.</p>
+                                <div class="code-pill" onclick="copyCode('WARP-999-OMX')">WARP-999-OMX</div>
+                            </div>
+                             <div class="machine-card official" data-name="dragoon ex" data-cat="flight">
+                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
+                                <img src="https://mario.wiki.gallery/images/thumb/0/05/Dragoon_KAirRide.png/1200px-Dragoon_KAirRide.png" class="machine-img">
+                                <h2 style="color:var(--bandana-blue);">Dragoon EX</h2>
+                                <p>Legendary speed machine. Assemble three parts A, B, and C to unlock this beast.</p>
+                                <div class="code-pill" onclick="copyCode('DRAG-555-LEG')">DRAG-555-LEG</div>
+                            </div>
+                             <div class="machine-card official" data-name="hydra max" data-cat="power">
+                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
+                                <img src="https://mario.wiki.gallery/images/thumb/f/f9/Hydra_KAirRide.png/1200px-Hydra_KAirRide.png" class="machine-img">
+                                <h2 style="color:var(--bandana-blue);">Hydra MAX</h2>
+                                <p>Triple boost power. Devastating charges. Requires significant charge time.</p>
+                                <div class="code-pill" onclick="copyCode('HYDR-444-TRI')">HYDR-444-TRI</div>
+                            </div>
+                        </div>
+                    </div>
+                  
+                    <div id="community" class="view-container">
+                        <div class="banner-wrapper">
+                            <img src="https://placehold.co/1000x220/FF8F45/FFFFFF?text=COMMUNITY+GARAGE&font=fredoka" class="wide-banner" style="border-color:var(--orange-main);">
+                            <div class="banner-badge" style="border-color:var(--orange-main);">⭐ Real User Uploads</div>
+                        </div>
+
+                        <div class="controls-bar">
+                            <input type="text" class="search-box" placeholder="🔍 Search community machines..." oninput="filterMachines('community')">
+                            <button class="filter-btn active" onclick="filterCategory('all', this, 'community')">All</button>
+                            <button class="filter-btn" onclick="filterCategory('speed', this, 'community')">⚡ Speed</button>
+                            <button class="filter-btn" onclick="filterCategory('power', this, 'community')">💪 Power</button>
+                            <button class="filter-btn" onclick="filterCategory('flight', this, 'community')">✈️ Flight</button>
+                        </div>
+
+                        <div id="uploadSection" class="upload-container" style="display:none;">
+                            <h2 style="font-family:'Fredoka'; color:var(--orange-main);">🛠️ Share Your Machine</h2>
+                            <p>Upload your machine code to the real database!</p>
+                            <form onsubmit="uploadMachine(event)">
+                                <input type="text" id="mName" placeholder="Machine Name (e.g. Dark Star)" class="form-input" required>
+                                <br>
+                                <input type="text" id="mCode" placeholder="Code (e.g. DRK-000-STR)" class="form-input" required>
+                                <br>
+                                <select id="mCategory" class="form-input" required>
+                                    <option value="">Select Category...</option>
+                                    <option value="speed">⚡ Speed</option>
+                                    <option value="power">💪 Power</option>
+                                    <option value="flight">✈️ Flight</option>
+                                    <option value="balanced">⚖️ Balanced</option>
+                                </select>
+                                <br>
+                                <button type="submit" id="pubBtn" class="auth-btn" style="margin:20px auto;">Publish to Cloud</button>
+                            </form>
+                        </div>
+
+                        <div id="communityGrid" class="machine-grid">
+                            <p style="text-align:center; color:white; width:100%;">Connecting to Firestore...</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="win-clicker" class="window minimized" style="width: 600px; height: 500px; top: 80px; left: 300px; z-index: 102;" onmousedown="focusWindow('win-clicker')">
+            <div class="title-bar" ondblclick="toggleMaximize('win-clicker')">
+                <div class="title-drag-area" id="drag-clicker">Waddle Clicker - Global Chance</div>
+                <div class="window-controls">
+                    <div class="control-btn" onclick="minimizeWindow('win-clicker')"><i class="fa-solid fa-minus"></i></div>
+                    <div class="control-btn close-btn" onclick="closeWindow('win-clicker')"><i class="fa-solid fa-xmark"></i></div>
+                </div>
+            </div>
+            <div class="window-content">
+                <div class="game-layout">
+                    <button style="position:absolute; top:20px; right:20px; background:white; border:none; border-radius:50%; width:40px; height:40px; box-shadow:0 3px 10px rgba(0,0,0,0.1); font-size:1.2rem;" onclick="toggleShop()">🛒</button>
+
+                    <div id="shopPanel" class="shop-panel">
+                        <h3>Waddle Shop</h3>
+                        <p>Spend 5,000 pts for a ticket!</p>
+                        <button class="auth-btn" style="width:100%; justify-content:center; margin-bottom:10px;" onclick="buyTicket()">Buy Ticket (5k)</button>
+                        <hr>
+                        <h4>Redeem Ticket</h4>
+                        <p>Feature a machine for 48h!</p>
+                        <select id="userMachinesSelect" class="form-input" style="width:100%; margin-bottom:10px;">
+                            <option>Loading your machines...</option>
+                        </select>
+                        <button class="auth-btn" style="width:100%; justify-content:center; background:#E65100;" onclick="redeemFeature()">Feature It!</button>
+                    </div>
+
+                    <div class="prob-container">
+                        <h3>Global Probability Meter</h3>
+                        <div class="prob-bar-bg">
+                            <div id="probBar" class="prob-bar-fill"></div>
+                            <div id="probText" class="prob-text">0.001%</div>
+                        </div>
+                        <small>Resets when someone wins the Jackpot!</small>
+                    </div>
+
+                    <!-- The Dee -->
+                    <div class="clicker-stage" id="clickStage">
+                        <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/ugly%20ahh%20home.png?raw=true" class="waddle-clicker" id="mainDee" onclick="clickDee()">
+                    </div>
+
+                    <div class="game-stats">
+                        <span>💰 Points: <b id="userPoints">0</b></span>
+                        <span>🎟️ Tickets: <b id="userTickets">0</b></span>
+                    </div>
+
+                    <div id="gameLoginOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; display:none;">
+                        <h2>Login Required</h2>
+                        <p>Save your points and win prizes!</p>
+                        <button class="auth-btn google-btn" onclick="login()">Login with Google</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABOUT WINDOW -->
+        <div id="win-about" class="window minimized" style="width: 400px; height: 500px; top: 100px; left: 200px; z-index: 101;" onmousedown="focusWindow('win-about')">
+            <div class="title-bar" ondblclick="toggleMaximize('win-about')">
+                <div class="title-drag-area" id="drag-about">About waddlOS</div>
+                <div class="window-controls">
+                    <div class="control-btn" onclick="minimizeWindow('win-about')"><i class="fa-solid fa-minus"></i></div>
+                    <div class="control-btn close-btn" onclick="closeWindow('win-about')"><i class="fa-solid fa-xmark"></i></div>
+                </div>
+            </div>
+            <div class="window-content" style="padding: 30px; text-align: center; background: #f9f9f9;">
+                <i class="fa-brands fa-windows" style="font-size: 60px; color: #0067c0; margin-bottom: 20px;"></i>
+                <h2 style="margin: 0 0 20px 0; color: #333;">WaddlOS</h2>
+                <div style="text-align: left; background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e5e5;">
+                    <p><strong>WaddlOS</strong></p>
+                    <p>Version 2.1 (Full Restoration)</p>
+                    <p>Powered by Google Firestore</p>
+                    <hr style="border:0; border-top:1px solid #eee; margin: 15px 0;">
+                    <p>This system now features real-time data persistence, authentication, and Waddle Clicker.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- TASKBAR -->
+    <div id="taskbar">
+        <div class="taskbar-icons">
+            <div class="task-icon"><img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true" alt="Start"></div>
+            <div class="task-icon"><img src="https://cdn-icons-png.flaticon.com/512/751/751463.png" alt="Search"></div>
+            <div id="task-browser" class="task-icon" onclick="toggleWindow('win-browser')">
+                <img src="https://cdn-icons-png.flaticon.com/512/5968/5968863.png" alt="Edge">
+            </div>
+             <div id="task-clicker" class="task-icon" onclick="toggleWindow('win-clicker')">
+                <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" alt="Clicker">
+            </div>
+            <div id="task-about" class="task-icon" onclick="toggleWindow('win-about')">
+                <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true" alt="Settings">
+            </div>
+        </div>
+        <div class="taskbar-right">
+            <i class="fa-solid fa-wifi"></i>
+            <i class="fa-solid fa-volume-high"></i>
+            <div id="clock">12:00 PM</div>
+        </div>
+    </div>
+
+    <script>
+        /* ========================================
+        1. WINDOWS OS LOGIC
+        ========================================
+        */
+        let zIndex = 100;
+
+        function focusWindow(id) {
+            zIndex++;
+            document.getElementById(id).style.zIndex = zIndex;
+        }
+
+        function openApp(appType) {
+            if (appType === 'about') {
+                restoreWindow('win-about');
+            } else if (appType === 'clicker') {
+                restoreWindow('win-clicker');
+            } else {
+                restoreWindow('win-browser');
+                if (appType === 'home') nav('home');
+                if (appType === 'garage') nav('store');
+                if (appType === 'community') nav('community');
+                if (appType === 'news') nav('news');
+            }
+        }
+
+        function minimizeWindow(id) {
+            document.getElementById(id).classList.add('minimized');
+            document.getElementById('task-' + id.replace('win-', '')).classList.remove('open');
+        }
+
+        function closeWindow(id) { minimizeWindow(id); }
+
+        function restoreWindow(id) {
+            const win = document.getElementById(id);
+            win.classList.remove('minimized');
+            focusWindow(id);
+            document.getElementById('task-' + id.replace('win-', '')).classList.add('open');
+        }
+
+        function toggleMaximize(id) {
+            const win = document.getElementById(id);
+            win.classList.toggle('maximized');
+            focusWindow(id);
+        }
+
+        function toggleWindow(id) {
+            const win = document.getElementById(id);
+            if (win.classList.contains('minimized')) {
+                restoreWindow(id);
+            } else {
+                if (parseInt(win.style.zIndex) === zIndex) minimizeWindow(id);
+                else focusWindow(id);
+            }
+        }
+
+        function makeDraggable(elmnt, handleId) {
+            var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const handle = document.getElementById(handleId);
+            handle.onmousedown = dragMouseDown;
+
+            function dragMouseDown(e) {
+                if(elmnt.classList.contains('maximized')) return;
+                e.preventDefault();
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                document.onmouseup = closeDragElement;
+                document.onmousemove = elementDrag;
+                focusWindow(elmnt.id);
+            }
+
+            function elementDrag(e) {
+                e.preventDefault();
+                pos1 = pos3 - e.clientX;
+                pos2 = pos4 - e.clientY;
+                pos3 = e.clientX;
+                pos4 = e.clientY;
+                elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+                elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+            }
+
+            function closeDragElement() {
+                document.onmouseup = null;
+                document.onmousemove = null;
+            }
+        }
+
+        makeDraggable(document.getElementById("win-browser"), "drag-browser");
+        makeDraggable(document.getElementById("win-about"), "drag-about");
+        makeDraggable(document.getElementById("win-clicker"), "drag-clicker");
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '\n' + now.toLocaleDateString();
+        }, 1000);
+
+        let currentFilter = { store: 'all', community: 'all' };
+        let currentUser = null;
+
+        function nav(viewId) {
+            document.querySelectorAll('.view-container').forEach(el => {
+                el.classList.remove('active');
+                el.style.display = 'none';
+            });
+            
+            const target = document.getElementById(viewId);
+            if(target) {
+                target.style.display = 'block';
+                setTimeout(() => target.classList.add('active'), 10);
+                document.querySelector('.waddle-app-container').scrollTop = 0;
+                
+                const urlInput = document.querySelector('.url-input');
+                const base = 'https://waddledee.site';
+                if(viewId === 'home') urlInput.value = base + '/home';
+                else if(viewId === 'store') urlInput.value = base + '/garage';
+                else if(viewId === 'community') urlInput.value = base + '/community';
+                else if(viewId === 'news') urlInput.value = base + '/news';
+                else if(viewId === 'article-view') urlInput.value = base + '/news/article';
+                else urlInput.value = base;
+            }
+        }
+
+        // --- AUTH SYSTEM ---
+        function initAuthSystem() {
+            window.onAuthStateChanged(window.auth, (user) => {
+                currentUser = user;
+                updateAuthUI();
+                if(user && !user.isAnonymous) {
+                    initGameListeners(user.uid);
+                    document.getElementById('gameLoginOverlay').style.display = 'none';
+                } else {
+                    document.getElementById('gameLoginOverlay').style.display = 'flex';
+                }
+            });
+        }
+
+        function login() {
+            window.signInWithPopup(window.auth, window.provider).then(() => {
+                playSound();
+                showToast('✨ Access Granted!');
+            }).catch(error => {
+                console.error(error);
+                showToast('Login Failed: ' + error.message);
+            });
+        }
+
+        function logout() {
+            window.signOut(window.auth).then(() => {
+                showToast('👋 Signed out');
+            });
+        }
+
+        function updateAuthUI() {
+            const authBox = document.getElementById('authBox');
+            const uploadSection = document.getElementById('uploadSection');
+            
+            if(currentUser && !currentUser.isAnonymous) {
+                authBox.innerHTML = `
+                    <div class="user-badge">
+                        <img src="${currentUser.photoURL || 'https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true'}" class="user-avatar">
+                        <span style="font-weight:bold;">${currentUser.displayName}</span>
+                        <i class="fa-solid fa-right-from-bracket" onclick="logout()" style="color:var(--dedede-red); cursor:pointer; margin-left:5px;"></i>
+                    </div>`;
+                if(uploadSection) uploadSection.style.display = 'block';
+            } else {
+                authBox.innerHTML = `
+                    <button class="auth-btn google-btn" onclick="login()">
+                        <img src="https://cdn-icons-png.flaticon.com/512/2991/2991148.png" style="width:20px; height:20px; margin-right:8px;">
+                        Sign in with Google
+                    </button>`;
+                if(uploadSection) uploadSection.style.display = 'none';
+            }
+        }
+
+        let canClick = true;
+        let globalProb = 0.001;
+
+        function initGameListeners(uid) {
+            window.onSnapshot(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state'), (doc) => {
+                if(doc.exists()) {
+                    globalProb = doc.data().globalProbability || 0.001;
+                    const pct = Math.min(globalProb, 100).toFixed(3);
+                    document.getElementById('probBar').style.width = pct + '%';
+                    document.getElementById('probText').textContent = pct + '%';
+                }
+            });
+
+            window.onSnapshot(window.doc(window.db, 'artifacts', window.appId, 'users', uid, 'game_stats'), (doc) => {
+                if(doc.exists()) {
+                    const data = doc.data();
+                    document.getElementById('userPoints').textContent = data.points || 0;
+                    document.getElementById('userTickets').textContent = data.tickets || 0;
+                }
+            });
+            
+            loadUserMachinesForShop(uid);
+        }
+
+        async function clickDee() {
+            if(!currentUser || currentUser.isAnonymous) { login(); return; }
+            if(!canClick) return;
+
+            const dee = document.getElementById('mainDee');
+            dee.classList.add('cooldown');
+            canClick = false;
+
+            const stage = document.getElementById('clickStage');
+            const popup = document.createElement('div');
+            popup.className = 'loot-popup';
+            popup.style.top = '40%';
+            stage.appendChild(popup);
+
+            try {
+                const gameRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'game_state');
+                const userStatRef = window.doc(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'game_stats');
+
+                await window.runTransaction(window.db, async (transaction) => {
+                    const gameDoc = await transaction.get(gameRef);
+                    const userDoc = await transaction.get(userStatRef);
+
+                    if (!gameDoc.exists()) throw "Game init error";
+
+                    let uData = userDoc.exists() ? userDoc.data() : { points: 0, tickets: 0, lastClick: 0 };
+                    
+                    // Cooldown (2000ms)
+                    const now = Date.now();
+                    if (now - (uData.lastClick || 0) < 2000) throw "Cooldown active";
+
+                    let currentProb = gameDoc.data().globalProbability;
+                    
+                    // Roll
+                    const roll = Math.random() * 100;
+                    let wonJackpot = roll < currentProb;
+                    let pointsEarned = 0;
+                    let msg = "";
+
+                    if (wonJackpot) {
+                        uData.tickets = (uData.tickets || 0) + 1;
+                        transaction.update(gameRef, { globalProbability: 0.001, lastWinner: currentUser.displayName });
+                        msg = "🌟 LEGENDARY! TICKET WON! 🌟";
+                    } else {
+                        const luckMultiplier = 1 + (currentProb / 10);
+                        const basePoints = Math.floor(Math.random() * 50) + 10;
+                        pointsEarned = Math.floor(basePoints * luckMultiplier);
+                        uData.points = (uData.points || 0) + pointsEarned;
+                        transaction.update(gameRef, { globalProbability: currentProb + 0.001 });
+                        
+                        const machines = ["Compact Star", "Slick Star", "Rocket Star", "Turbo Star", "Rex Wheel"];
+                        const m = machines[Math.floor(Math.random() * machines.length)];
+                        msg = `${m} Found! +${pointsEarned}`;
+                    }
+                    
+                    uData.lastClick = now;
+                    transaction.set(userStatRef, uData);
+                    popup.textContent = msg;
+                });
+                playSound();
+            } catch (e) {
+                if(e === "Cooldown active") popup.textContent = "Wait...";
+                else console.error(e);
+            }
+
+            setTimeout(() => {
+                dee.classList.remove('cooldown');
+                canClick = true;
+                setTimeout(() => popup.remove(), 1000);
+            }, 2000);
+        }
+
+        function toggleShop() {
+            document.getElementById('shopPanel').classList.toggle('open');
+        }
+
+        async function buyTicket() {
+            if(!confirm("Spend 5000 points for a ticket?")) return;
+            const userRef = window.doc(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'game_stats');
+            try {
+                await window.runTransaction(window.db, async (t) => {
+                    const doc = await t.get(userRef);
+                    const data = doc.data();
+                    if(data.points < 5000) throw "Not enough points!";
+                    t.update(userRef, { points: data.points - 5000, tickets: (data.tickets||0) + 1 });
+                });
+                showToast("Ticket Purchased!");
+            } catch(e) { showToast(e.toString()); }
+        }
+
+        async function redeemFeature() {
+            const select = document.getElementById('userMachinesSelect');
+            const machineId = select.value;
+            if(!machineId) return;
+            const userRef = window.doc(window.db, 'artifacts', window.appId, 'users', currentUser.uid, 'game_stats');
+            const machineRef = window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'machines', machineId);
+            try {
+                await window.runTransaction(window.db, async (t) => {
+                    const uDoc = await t.get(userRef);
+                    if((uDoc.data().tickets || 0) < 1) throw "No tickets!";
+                    t.update(userRef, { tickets: uDoc.data().tickets - 1 });
+                    t.update(machineRef, { featuredUntil: Date.now() + (48 * 60 * 60 * 1000) });
+                });
+                showToast("Machine Featured for 48h!");
+            } catch(e) { showToast(e.toString()); }
+        }
+
+        // --- REAL NEWS FETCH ---
+        function loadNews() {
+            const newsRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'news');
+            const q = window.query(newsRef, window.orderBy('timestamp', 'desc'));
+
+            window.onSnapshot(q, (snapshot) => {
+                const feed = document.getElementById('newsFeed');
+                feed.innerHTML = '';
+                
+                if(snapshot.empty) {
+                    feed.innerHTML = '<p style="text-align:center; color:white;">No news found. Check back later!</p>';
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const card = document.createElement('div');
+                    card.className = 'news-featured'; 
+                    card.innerHTML = `
+                        <div class="tag" style="position:absolute; top:20px; left:20px; z-index:2;">${data.tag || 'Update'}</div>
+                        <img src="${data.img}" class="featured-img" onerror="this.src='https://placehold.co/800x400?text=News'">
+                        <div class="featured-overlay">
+                            <h1 style="font-family:'Fredoka'; font-size:2rem; margin:0; text-shadow:0 2px 5px rgba(0,0,0,0.5);">${data.title}</h1>
+                            <button class="auth-btn" style="background:white; color:var(--orange-dark); margin-top:15px;">Read Article</button>
+                        </div>
+                    `;
+                    card.onclick = () => openFirebaseArticle(data);
+                    feed.appendChild(card);
+                });
+            });
+        }
+
+        function openFirebaseArticle(data) {
+            document.getElementById('articleTitle').textContent = data.title;
+            document.getElementById('articleTag').textContent = data.tag;
+            document.getElementById('articleHero').src = data.img;
+            document.getElementById('articleContent').innerHTML = data.content || "<p>No content available.</p>";
+            nav('article-view');
+        }
+
+        // --- REAL COMMUNITY MACHINES ---
+        function loadUserMachinesForShop(uid) {
+            const q = window.query(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'machines'), window.orderBy('timestamp', 'desc'));
+            window.onSnapshot(q, (snap) => {
+                const select = document.getElementById('userMachinesSelect');
+                select.innerHTML = '';
+                snap.forEach(d => {
+                    const m = d.data();
+                    if(m.uid === uid) {
+                        const opt = document.createElement('option');
+                        opt.value = d.id;
+                        opt.textContent = m.name;
+                        select.appendChild(opt);
+                    }
+                });
+                if(select.children.length === 0) select.innerHTML = "<option>No machines uploaded</option>";
+            });
+        }
+
+        function initMachineListener() {
+            const machineRef = window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'machines');
+            const q = window.query(machineRef, window.orderBy('timestamp', 'desc'));
+
+            window.onSnapshot(q, (snapshot) => {
+                const grid = document.getElementById('communityGrid');
+                grid.innerHTML = '';
+                
+                if(snapshot.empty) {
+                    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:white;">No community machines yet. Be the first!</p>`;
+                    return;
+                }
+
+                let machines = [];
+                snapshot.forEach(d => machines.push({id: d.id, ...d.data()}));
+                
+                // Sort Features to top
+                machines.sort((a, b) => {
+                    const now = Date.now();
+                    const aFeat = (a.featuredUntil || 0) > now;
+                    const bFeat = (b.featuredUntil || 0) > now;
+                    if (aFeat && !bFeat) return -1;
+                    if (!aFeat && bFeat) return 1;
+                    return b.timestamp - a.timestamp;
+                });
+
+                machines.forEach(m => {
+                    const isOwner = currentUser && m.uid === currentUser.uid;
+                    const isFeat = (m.featuredUntil || 0) > Date.now();
+
+                    const card = document.createElement('div');
+                    card.className = `machine-card ${isFeat ? 'featured' : ''}`;
+                    card.dataset.name = m.name.toLowerCase();
+                    card.dataset.cat = m.category;
+                    
+                    card.innerHTML = `
+                        ${isFeat ? '<div class="featured-badge">✨ FEATURED</div>' : ''}
+                        ${isOwner ? `<button class="delete-btn" onclick="deleteMachine('${m.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
+                        <img src="https://placehold.co/300x150/EEE/999?text=${m.category.toUpperCase()}" class="machine-img">
+                        <h3>${m.name}</h3>
+                        <div class="code-pill" onclick="copyCode('${m.code}')">${m.code}</div>
+                        <div style="margin-top:10px; font-size:0.8rem; color:#888;">
+                            By ${m.author || 'Anon'} • ${m.category.toUpperCase()}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+                filterMachines('community');
+            });
+        }
+
+        async function uploadMachine(e) {
+            e.preventDefault();
+            if(!currentUser || currentUser.isAnonymous) {
+                showToast("Please sign in with Google first!");
+                return;
+            }
+            const btn = document.getElementById('pubBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "Publishing...";
+            btn.disabled = true;
+
+            try {
+                const machine = {
+                    name: document.getElementById('mName').value,
+                    code: document.getElementById('mCode').value,
+                    category: document.getElementById('mCategory').value,
+                    author: currentUser.displayName,
+                    uid: currentUser.uid,
+                    timestamp: Date.now()
+                };
+
+                await window.addDoc(window.collection(window.db, 'artifacts', window.appId, 'public', 'data', 'machines'), machine);
+                playSound();
+                showToast('🎉 Machine published to cloud!');
+                e.target.reset();
+            } catch (err) {
+                console.error(err);
+                showToast('Error uploading: ' + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function deleteMachine(docId) {
+            if(confirm("Are you sure you want to delete your machine?")) {
+                try {
+                    await window.deleteDoc(window.doc(window.db, 'artifacts', window.appId, 'public', 'data', 'machines', docId));
+                    showToast('Deleted.');
+                } catch(err) {
+                    showToast('Error deleting: ' + err.message);
+                }
+            }
+        }
+
+        // --- FILTER LOGIC ---
+        function filterCategory(category, btn, view) {
+            currentFilter[view] = category;
+            const container = view === 'store' ? document.getElementById('store') : document.getElementById('community');
+            container.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const gridId = view === 'store' ? 'storeGrid' : 'communityGrid';
+            const cards = document.querySelectorAll(`#${gridId} .machine-card`);
+            
+            cards.forEach(card => {
+                const cat = card.dataset.cat;
+                const matchesCat = category === 'all' || cat === category;
+                const searchInput = container.querySelector('.search-box').value.toLowerCase();
+                const name = card.dataset.name || '';
+                
+                if(matchesCat && name.includes(searchInput)) card.style.display = 'block';
+                else card.style.display = 'none';
+            });
+        }
+
+        function filterMachines(view) {
+            const container = view === 'store' ? document.getElementById('store') : document.getElementById('community');
+            const searchTerm = container.querySelector('.search-box').value.toLowerCase();
+            const gridId = view === 'store' ? 'storeGrid' : 'communityGrid';
+            const cards = document.querySelectorAll(`#${gridId} .machine-card`);
+            const category = currentFilter[view];
+
+            cards.forEach(card => {
+                const name = card.dataset.name || '';
+                const cat = card.dataset.cat;
+                const matchesCat = category === 'all' || cat === category;
+                if(name.includes(searchTerm) && matchesCat) card.style.display = 'block';
+                else card.style.display = 'none';
+            });
+        }
+
+        // --- UTILS ---
+        function copyCode(code) {
+            navigator.clipboard.writeText(code).then(() => {
+                playSound();
+                showToast(`📋 Copied: ${code}`);
+            });
+        }
+
+        function playSound() {
+            const audio = document.getElementById('wanya');
+            audio.currentTime = 0;
+            audio.play().catch(e => {});
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.querySelector('.waddle-app-container').appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // --- BACKGROUND ANIMATION ---
+        const soulCanvasEl = document.getElementById('soulCanvas');
+        const soulCtx = soulCanvasEl.getContext('2d');
+        let soulWidth, soulHeight;
+        let particles = [];
+
+        function resize() { 
+            soulWidth = soulCanvasEl.width = 1000; 
+            soulHeight = soulCanvasEl.height = 800; 
+        }
+        resize();
+
+        function initParticles() {
+            for(let i = 0; i < 60; i++) {
+                particles.push({
+                    x: Math.random() * soulWidth, 
+                    y: Math.random() * soulHeight,
+                    r: Math.random() * 3,
+                    d: Math.random() * Math.PI * 2,
+                    v: Math.random() * 0.5 + 0.1
+                });
+            }
+        }
+        initParticles();
+
+        function animate() {
+            soulCtx.clearRect(0, 0, soulWidth, soulHeight);
+            soulCtx.fillStyle = 'rgba(255,255,255,0.3)';
+            particles.forEach(p => {
+                p.x += Math.cos(p.d) * p.v;
+                p.y += Math.sin(p.d) * p.v;
+                if(p.x < 0) p.x = soulWidth; 
+                if(p.x > soulWidth) p.x = 0;
+                if(p.y < 0) p.y = soulHeight; 
+                if(p.y > soulHeight) p.y = 0;
+                soulCtx.beginPath(); 
+                soulCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2); 
+                soulCtx.fill();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Boot
+        function bootOS() {
+             const loader = document.getElementById('loader');
+             if(loader) {
+                 loader.style.opacity = '0';
+                 setTimeout(() => loader.remove(), 500);
+             }
+             
+             if(window.db) {
+                 initAuthSystem();
+                 loadNews();
+                 initMachineListener();
+             } else {
+                 setTimeout(() => { 
+                    if(window.db) {
+                        initAuthSystem();
+                        loadNews(); 
+                        initMachineListener(); 
+                    }
+                 }, 500);
+             }
+
+             const appContainer = document.querySelector('.waddle-app-container');
+             if(appContainer) {
+                appContainer.addEventListener('scroll', () => {
+                    const dee = document.getElementById('peekDee');
+                    if (appContainer.scrollTop > 400) dee.style.right = "20px";
+                    else dee.style.right = "-200px";
+                });
+             }
+        }
+
+        if (window.db) {
+            bootOS();
+        } else {
+            window.addEventListener('firebase-ready', bootOS);
+            setTimeout(() => {
+                const loader = document.getElementById('loader');
+                if(loader && loader.parentElement && !window.db) {
+                     if(window.db) bootOS();
+                }
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
