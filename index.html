@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>waddlOS - Kirby Air Ride Hub</title>
+    <title>waddlOS - The Kirby Air Riders Hub</title>
     
     <!-- Firebase SDKs -->
     <script type="module">
@@ -56,25 +56,17 @@
                     const batch = writeBatch(db);
                     const seedData = [
                         {
-                            title: "City Trial: New Events Discovered?",
-                            content: "Players have reported seeing a new variation of the Dyna Blade event in City Trial mode.",
+                            title: "hi",
+                            content: "articles didnt loda in ahhaha oopse sorry",
                             img: "https://mario.wiki.gallery/images/thumb/c/c6/KAirRide_City_Trial.png/1200px-KAirRide_City_Trial.png",
                             tag: "Rumor",
                             timestamp: Date.now()
-                        },
-                        {
-                            title: "Top 5 Legendary Machines",
-                            content: "We ranked the Dragoon vs the Hydra.",
-                            img: "https://mario.wiki.gallery/images/thumb/0/05/Dragoon_KAirRide.png/1200px-Dragoon_KAirRide.png",
-                            tag: "Meta",
-                            timestamp: Date.now() - 10000
                         }
                     ];
                     seedData.forEach(item => batch.set(doc(newsRef), item));
                     await batch.commit();
                 }
 
-                // FIXED: Added '/global' to make the path 6 segments long (Even number required for Docs)
                 const gameStateRef = doc(db, 'artifacts', appId, 'public', 'data', 'game_state', 'global');
                 const gameSnap = await getDoc(gameStateRef);
                 if (!gameSnap.exists()) {
@@ -92,7 +84,6 @@
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await signInWithCustomToken(auth, __initial_auth_token);
                 } else {
-                    // Anonymous auth is cleaner for read-only access first
                     await signInAnonymously(auth);
                 }
                 window.dispatchEvent(new Event('firebase-ready'));
@@ -255,6 +246,7 @@
         .machine-card {
             background: white; border-radius: 25px; padding: 25px; border: 3px solid transparent;
             box-shadow: 0 5px 10px rgba(0,0,0,0.05); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative;
+            display: flex; flex-direction: column; overflow: hidden;
         }
         .machine-card:hover { transform: translateY(-15px) rotateX(5deg); border-color: var(--orange-main); box-shadow: 0 20px 40px rgba(255, 143, 69, 0.2); z-index: 5; }
         .machine-card.official { background: linear-gradient(160deg, #FFFFFF 50%, #E1F5FE 100%); border: 3px solid var(--bandana-blue); }
@@ -269,7 +261,7 @@
             border-radius: 10px; font-weight: bold; font-size: 0.8rem; border: 2px solid white; box-shadow: 0 5px 5px rgba(0,0,0,0.1);
         }
 
-        .machine-img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 15px; }
+        .machine-img { width: 100%; height: 150px; object-fit: contain; margin-bottom: 15px; background: #f9f9f9; border-radius: 10px; }
         .machine-card h2, .machine-card h3 { margin: 0; font-family:'Fredoka'; font-size: 1.5rem; }
         .machine-card p { font-size: 0.9rem; color: #666; margin-top: 5px; }
 
@@ -284,9 +276,10 @@
             background: white; padding: 40px; border-radius: 30px; text-align: center; border: 5px solid var(--orange-main);
             margin-bottom: 50px; box-shadow: inset 0 0 30px rgba(255, 143, 69, 0.1);
         }
-        .form-input { width: 80%; padding: 15px 25px; margin: 10px 0; border-radius: 15px; border: 2px solid #EEE; font-family: 'Nunito'; font-size: 1rem; transition: 0.3s; }
+        .form-input { width: 80%; padding: 15px 25px; margin: 10px 0; border-radius: 15px; border: 2px solid #EEE; font-family: 'Nunito'; font-size: 1rem; transition: 0.3s; box-sizing: border-box; }
         .form-input:focus { border-color: var(--orange-main); box-shadow: 0 0 0 4px rgba(255, 143, 69, 0.2); }
         select.form-input { appearance: none; background: white url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M6 9L1 4h10z"/></svg>') no-repeat right 20px center; }
+        input[type="file"].form-input { padding: 12px; background: white; }
 
         #peekDee { position: fixed; bottom: -100px; right: -200px; width: 180px; transition: right 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 4000; filter: drop-shadow(-5px 0 10px rgba(0,0,0,0.2)); }
         
@@ -343,7 +336,7 @@
 
     <!-- AUDIO ASSETS -->
     <audio id="wanya" src="https://www.myinstants.com/media/sounds/waddle-dee.mp3"></audio>
-    <audio id="bgm" loop src="https://pixabay.com/music/video-games-funny-bgm-240931/download?title=funny-bgm-240931.mp3"></audio>
+    <audio id="bgm" loop src="https://github.com/waddledeeliveries/waddledeesite/raw/refs/heads/main/mainmenuOS.ogg"></audio>
     <audio id="sfx-click" src="https://www.soundjay.com/buttons/sounds/button-30.mp3"></audio>
     <audio id="sfx-open" src="https://www.soundjay.com/buttons/sounds/button-3.mp3"></audio>
 
@@ -365,7 +358,7 @@
         </div>
 
         <div class="desktop-icon" ondblclick="openApp('clicker')">
-            <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" class="icon-img">
+            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddleclicker.png?raw=true" class="icon-img">
             <div class="icon-label">Waddle Clicker</div>
         </div>
 
@@ -425,7 +418,7 @@
                         <div class="grid-layout">
                             <div class="widget">
                                 <div class="widget-header">about waddledee.site 🤔</div>
-                                <p>Welcome to the ultimate community hub for <strong>Kirby Air Riders</strong>! This website is for connecting with other players, sharing your custom machines, checking up on the latest Kirby Air Riders info.</p>
+                                <p>The ultimate community hub for <strong>Kirby Air Riders</strong>! This website is for connecting with other players, sharing your custom machines, checking up on the latest Kirby Air Riders info. I hope this can bring value to the community, and be convenient for everyone with its neat tools!</p>
                                 <p style="font-size:0.9rem; color:#666; margin-top:20px;"><em>Disclaimer: This is a non-profit fan project. Not affiliated with Nintendo/HAL.</em></p>
                             </div>
 
@@ -490,25 +483,11 @@
 
                         <div class="machine-grid" id="storeGrid">
                             <div class="machine-card official" data-name="warp star omega" data-cat="balanced">
-                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
+                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL✅</div>
                                 <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" class="machine-img">
-                                <h2 style="color:var(--bandana-blue);">Warp Star Omega</h2>
-                                <p>The gold standard. Balanced speed and turn. Excellent for beginners and pros alike.</p>
-                                <div class="code-pill" onclick="copyCode('WARP-999-OMX')">WARP-999-OMX</div>
-                            </div>
-                             <div class="machine-card official" data-name="dragoon ex" data-cat="flight">
-                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
-                                <img src="https://mario.wiki.gallery/images/thumb/0/05/Dragoon_KAirRide.png/1200px-Dragoon_KAirRide.png" class="machine-img">
-                                <h2 style="color:var(--bandana-blue);">Dragoon EX</h2>
-                                <p>Legendary speed machine. Assemble three parts A, B, and C to unlock this beast.</p>
-                                <div class="code-pill" onclick="copyCode('DRAG-555-LEG')">DRAG-555-LEG</div>
-                            </div>
-                             <div class="machine-card official" data-name="hydra max" data-cat="power">
-                                <div class="verified-badge"><i class="fa-solid fa-check"></i> OFFICIAL</div>
-                                <img src="https://mario.wiki.gallery/images/thumb/f/f9/Hydra_KAirRide.png/1200px-Hydra_KAirRide.png" class="machine-img">
-                                <h2 style="color:var(--bandana-blue);">Hydra MAX</h2>
-                                <p>Triple boost power. Devastating charges. Requires significant charge time.</p>
-                                <div class="code-pill" onclick="copyCode('HYDR-444-TRI')">HYDR-444-TRI</div>
+                                <h2 style="color:var(--bandana-blue);">coming soon...</h2>
+                                <p>waddles coming in with his GRAND RELEASE of machines!!</p>
+                                <div class="code-pill" onclick="copyCode('WARP-999-OMX')">SOON</div>
                             </div>
                         </div>
                     </div>
@@ -516,40 +495,72 @@
                     <!-- COMMUNITY GARAGE VIEW -->
                     <div id="community" class="view-container">
                         <div class="banner-wrapper">
-                            <img src="https://placehold.co/1000x220/FF8F45/FFFFFF?text=COMMUNITY+GARAGE&font=fredoka" class="wide-banner" style="border-color:var(--orange-main);">
-                            <div class="banner-badge" style="border-color:var(--orange-main);">⭐ Real User Uploads</div>
+                            <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlecommunity1360.png?raw=true" class="wide-banner" style="border-color:var(--orange-main);">
+                            <div class="banner-badge" style="border-color:var(--orange-main);">⭐ real user uploads!</div>
                         </div>
 
                         <div class="controls-bar">
                             <input type="text" class="search-box" placeholder="🔍 Search community machines..." oninput="filterMachines('community')">
                             <button class="filter-btn active" onclick="filterCategory('all', this, 'community')">All</button>
-                            <button class="filter-btn" onclick="filterCategory('speed', this, 'community')">⚡ Speed</button>
-                            <button class="filter-btn" onclick="filterCategory('power', this, 'community')">💪 Power</button>
-                            <button class="filter-btn" onclick="filterCategory('flight', this, 'community')">✈️ Flight</button>
+                            <button class="filter-btn" onclick="filterCategory('cheap', this, 'community')">💰 Cheap</button>
+                            <button class="filter-btn" onclick="filterCategory('expensive', this, 'community')">💎 Expensive</button>
+                            <button class="filter-btn" onclick="filterCategory('normal', this, 'community')">🚗 Normal</button>
+                            <button class="filter-btn" onclick="filterCategory('game reference', this, 'community')">🎮 Game Ref</button>
                         </div>
 
                         <div id="uploadSection" class="upload-container" style="display:none;">
                             <h2 style="font-family:'Fredoka'; color:var(--orange-main);">🛠️ Share Your Machine</h2>
-                            <p>Upload your machine code to the real database!</p>
+                            <p>Upload your machine for everyone to see!</p>
                             <form onsubmit="uploadMachine(event)">
-                                <input type="text" id="mName" placeholder="Machine Name (e.g. Dark Star)" class="form-input" required>
+                                <input type="text" id="mName" placeholder="Machine Name (e.g. waddle dee mega destroyer star)" class="form-input" required>
                                 <br>
-                                <input type="text" id="mCode" placeholder="Code (e.g. DRK-000-STR)" class="form-input" required>
+                                <input type="text" id="mCode" placeholder="Code (e.g. MX93QWER)" class="form-input" required>
                                 <br>
-                                <select id="mCategory" class="form-input" required>
-                                    <option value="">Select Category...</option>
-                                    <option value="speed">⚡ Speed</option>
-                                    <option value="power">💪 Power</option>
-                                    <option value="flight">✈️ Flight</option>
-                                    <option value="balanced">⚖️ Balanced</option>
+                                <select id="mMachineType" class="form-input" required>
+                                    <option value="">Select Machine Type...</option>
+                                    <option value="Warp Star">Warp Star</option>
+                                    <option value="Winged Star">Winged Star</option>
+                                    <option value="Shadow Star">Shadow Star</option>
+                                    <option value="Wagon Star">Wagon Star</option>
+                                    <option value="Slick Star">Slick Star</option>
+                                    <option value="Formula Star">Formula Star</option>
+                                    <option value="Bulk Star">Bulk Star</option>
+                                    <option value="Rocket Star">Rocket Star</option>
+                                    <option value="Swerve Star">Swerve Star</option>
+                                    <option value="Turbo Star">Turbo Star</option>
+                                    <option value="Jet Star">Jet Star</option>
+                                    <option value="Wheelie Bike">Wheelie Bike</option>
+                                    <option value="Rex Wheelie">Rex Wheelie</option>
+                                    <option value="Wheelie Scooter">Wheelie Scooter</option>
+                                    <option value="Hop Star">Hop Star</option>
+                                    <option value="Vampire Star">Vampire Star</option>
+                                    <option value="Paper Star">Paper Star</option>
+                                    <option value="Chariot">Chariot</option>
+                                    <option value="Battle Chariot">Battle Chariot</option>
+                                    <option value="Tank Star">Tank Star</option>
+                                    <option value="Bull Tank">Bull Tank</option>
+                                    <option value="Transform Star">Transform Star</option>
+                                    <option value="Flight Warp Star">Flight Warp Star</option>
+                                    <option value="Compact Star">Compact Star</option>
                                 </select>
                                 <br>
-                                <button type="submit" id="pubBtn" class="auth-btn" style="margin:20px auto;">Publish to Cloud</button>
+                                <select id="mStatType" class="form-input" required>
+                                    <option value="">Select Tag...</option>
+                                    <option value="cheap">💰 Cheap</option>
+                                    <option value="expensive">💎 Expensive</option>
+                                    <option value="normal">🚗 Normal</option>
+                                    <option value="game reference">🎮 Game Reference</option>
+                                </select>
+                                <br>
+                                <p style="margin:10px 0 5px; font-weight:bold;">Paste Screenshot URL:</p>
+                                <input type="url" id="mScreenshot" class="form-input" placeholder="e.g. https://media.discordapp.net/attachments/..." pattern="https://.*" required>
+                                <br>
+                                <button type="submit" id="pubBtn" class="auth-btn" style="margin:20px auto;">Publish!</button>
                             </form>
                         </div>
 
                         <div id="communityGrid" class="machine-grid">
-                            <p style="text-align:center; color:white; width:100%;">Connecting to Firestore...</p>
+                            <p style="text-align:center; color:white; width:100%;">Connecting to Database...</p>
                         </div>
                     </div>
 
@@ -561,7 +572,7 @@
         <!-- CLICKER GAME WINDOW -->
         <div id="win-clicker" class="window minimized" style="width: 600px; height: 500px; top: 80px; left: 300px; z-index: 102;" onmousedown="focusWindow('win-clicker')">
             <div class="title-bar" ondblclick="toggleMaximize('win-clicker')">
-                <div class="title-drag-area" id="drag-clicker">Waddle Clicker - Global Chance</div>
+                <div class="title-drag-area" id="drag-clicker">waddle clicker 3002 - hit da jackpot!</div>
                 <div class="window-controls">
                     <div class="control-btn" onclick="minimizeWindow('win-clicker')"><i class="fa-solid fa-minus"></i></div>
                     <div class="control-btn close-btn" onclick="closeWindow('win-clicker')"><i class="fa-solid fa-xmark"></i></div>
@@ -570,15 +581,18 @@
             <div class="window-content">
                 <div class="game-layout">
                     <!-- Shop Toggle -->
-                    <button style="position:absolute; top:20px; right:20px; background:white; border:none; border-radius:50%; width:40px; height:40px; box-shadow:0 3px 10px rgba(0,0,0,0.1); font-size:1.2rem;" onclick="toggleShop()">🛒</button>
+                    <button style="position:absolute; top:20px; right:20px; background:white; border:none; border-radius:50%; width:40px; height:40px; box-shadow:0 3px 10px rgba(0,0,0,0.1); font-size:1.2rem; z-index: 5; cursor: pointer;" onclick="toggleShop()">🛒</button>
 
                     <!-- Shop Panel -->
                     <div id="shopPanel" class="shop-panel">
-                        <h3>Waddle Shop</h3>
-                        <p>Spend 5,000 pts for a ticket!</p>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h3 style="margin:0;">Waddle's Shop</h3>
+                            <button onclick="toggleShop()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;">❌</button>
+                        </div>
+                        <p>Spend 5,000 points for a waddle ticket!</p>
                         <button class="auth-btn" style="width:100%; justify-content:center; margin-bottom:10px;" onclick="buyTicket()">Buy Ticket (5k)</button>
                         <hr>
-                        <h4>Redeem Ticket</h4>
+                        <h4>Redeem Waddle Ticket</h4>
                         <p>Feature a machine for 48h!</p>
                         <select id="userMachinesSelect" class="form-input" style="width:100%; margin-bottom:10px;">
                             <option>Loading your machines...</option>
@@ -588,7 +602,7 @@
 
                     <!-- Progress -->
                     <div class="prob-container">
-                        <h3>Global Probability Meter</h3>
+                        <h3>Global Probability</h3>
                         <div class="prob-bar-bg">
                             <div id="probBar" class="prob-bar-fill"></div>
                             <div id="probText" class="prob-text">0.001%</div>
@@ -610,7 +624,7 @@
                     <!-- Login Overlay if needed -->
                     <div id="gameLoginOverlay" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10; display:none;">
                         <h2>Login Required</h2>
-                        <p>Save your points and win prizes!</p>
+                        <p>save your points and win PRIZES!!</p>
                         <button class="auth-btn google-btn" onclick="login()">Login with Google</button>
                     </div>
                 </div>
@@ -631,10 +645,10 @@
                 <h2 style="margin: 0 0 20px 0; color: #333;">WaddlOS</h2>
                 <div style="text-align: left; background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e5e5;">
                     <p><strong>WaddlOS</strong></p>
-                    <p>Version 2.2 (Music & Fixes)</p>
-                    <p>Powered by Google Firestore</p>
+                    <p>Version W1.0</p>
+                    <p>Powered by the waddle dees that run outside my house</p>
                     <hr style="border:0; border-top:1px solid #eee; margin: 15px 0;">
-                    <p>Now with Ambient Tunes and No Loading Screens!</p>
+                    <p>Community Garage, Waddle's Garage, Home Page, Clicker, have all been added in the launch version!</p>
                 </div>
             </div>
         </div>
@@ -645,15 +659,15 @@
     <div id="taskbar">
         <div class="taskbar-icons">
             <div class="task-icon"><img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true" alt="Start"></div>
-            <div class="task-icon"><img src="https://cdn-icons-png.flaticon.com/512/751/751463.png" alt="Search"></div>
+            <div class="task-icon"><img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/seaerch.png?raw=true" alt="Search"></div>
             <div id="task-browser" class="task-icon" onclick="toggleWindow('win-browser')">
-                <img src="https://cdn-icons-png.flaticon.com/512/5968/5968863.png" alt="Edge">
+                <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/googlenoitswadgle.png?raw=true" alt="Edge">
             </div>
              <div id="task-clicker" class="task-icon" onclick="toggleWindow('win-clicker')">
-                <img src="https://mario.wiki.gallery/images/thumb/6/65/WarpStar_KAirRide.png/1200px-WarpStar_KAirRide.png" alt="Clicker">
+                <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddleclicker.png?raw=true" alt="Clicker">
             </div>
             <div id="task-about" class="task-icon" onclick="toggleWindow('win-about')">
-                <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true" alt="Settings">
+                <img src="https://github.com/waddledeeliveries/waddledeesite/blob/main/windowssnoitswaddlOS.png?raw=true" alt="Settings">
             </div>
         </div>
         <div class="taskbar-right">
@@ -823,8 +837,9 @@
                 currentUser = user;
                 updateAuthUI();
                 if(user && !user.isAnonymous) {
-                    initGameListeners(user.uid);
+                    // FIX: Hide overlay FIRST before attempting to load data
                     document.getElementById('gameLoginOverlay').style.display = 'none';
+                    try { initGameListeners(user.uid); } catch(e) { console.error(e); }
                 } else {
                     document.getElementById('gameLoginOverlay').style.display = 'flex';
                 }
@@ -878,8 +893,10 @@
                 if(doc.exists()) {
                     globalProb = doc.data().globalProbability || 0.001;
                     const pct = Math.min(globalProb, 100).toFixed(3);
-                    document.getElementById('probBar').style.width = pct + '%';
-                    document.getElementById('probText').textContent = pct + '%';
+                    const bar = document.getElementById('probBar');
+                    const text = document.getElementById('probText');
+                    if(bar) bar.style.width = pct + '%';
+                    if(text) text.textContent = pct + '%';
                 }
             });
 
@@ -887,8 +904,10 @@
             window.onSnapshot(window.doc(window.db, 'artifacts', window.appId, 'users', uid, 'game_stats'), (doc) => {
                 if(doc.exists()) {
                     const data = doc.data();
-                    document.getElementById('userPoints').textContent = data.points || 0;
-                    document.getElementById('userTickets').textContent = data.tickets || 0;
+                    const pts = document.getElementById('userPoints');
+                    const tix = document.getElementById('userTickets');
+                    if(pts) pts.textContent = data.points || 0;
+                    if(tix) tix.textContent = data.tickets || 0;
                 }
             });
             
@@ -1100,11 +1119,12 @@
                     card.innerHTML = `
                         ${isFeat ? '<div class="featured-badge">✨ FEATURED</div>' : ''}
                         ${isOwner ? `<button class="delete-btn" onclick="deleteMachine('${m.id}')"><i class="fa-solid fa-trash"></i></button>` : ''}
-                        <img src="https://placehold.co/300x150/EEE/999?text=${m.category.toUpperCase()}" class="machine-img">
+                        <img src="${m.image || 'https://placehold.co/300x150/EEE/999?text=No+Image'}" class="machine-img">
                         <h3>${m.name}</h3>
                         <div class="code-pill" onclick="copyCode('${m.code}')">${m.code}</div>
                         <div style="margin-top:10px; font-size:0.8rem; color:#888;">
                             By ${m.author || 'Anon'} • ${m.category.toUpperCase()}
+                            <br><span style="color:#0067c0;">${m.machineType || 'Unknown Machine'}</span>
                         </div>
                     `;
                     grid.appendChild(card);
@@ -1121,14 +1141,28 @@
             }
             const btn = document.getElementById('pubBtn');
             const originalText = btn.innerText;
-            btn.innerText = "Publishing...";
+            
+            // Get URL from input
+            const urlInput = document.getElementById('mScreenshot');
+            const imageUrl = urlInput.value;
+
+            // Basic URL validation (just check if it starts with http)
+            if (imageUrl && !imageUrl.startsWith('http')) {
+                showToast("Please enter a valid image URL (starting with http/https)");
+                return;
+            }
+
+            btn.innerText = "Saving Data...";
             btn.disabled = true;
 
             try {
+                // Save to Firestore (Saving the URL string provided by user)
                 const machine = {
                     name: document.getElementById('mName').value,
                     code: document.getElementById('mCode').value,
-                    category: document.getElementById('mCategory').value,
+                    category: document.getElementById('mStatType').value,
+                    machineType: document.getElementById('mMachineType').value,
+                    image: imageUrl, // Save the URL string directly
                     author: currentUser.displayName,
                     uid: currentUser.uid,
                     timestamp: Date.now()
@@ -1140,7 +1174,7 @@
                 e.target.reset();
             } catch (err) {
                 console.error(err);
-                showToast('Error uploading: ' + err.message);
+                showToast('Error: ' + err.message);
             } finally {
                 btn.innerText = originalText;
                 btn.disabled = false;
@@ -1174,7 +1208,7 @@
                 const searchInput = container.querySelector('.search-box').value.toLowerCase();
                 const name = card.dataset.name || '';
                 
-                if(matchesCat && name.includes(searchInput)) card.style.display = 'block';
+                if(matchesCat && name.includes(searchInput)) card.style.display = 'flex';
                 else card.style.display = 'none';
             });
         }
@@ -1190,7 +1224,7 @@
                 const name = card.dataset.name || '';
                 const cat = card.dataset.cat;
                 const matchesCat = category === 'all' || cat === category;
-                if(name.includes(searchTerm) && matchesCat) card.style.display = 'block';
+                if(name.includes(searchTerm) && matchesCat) card.style.display = 'flex';
                 else card.style.display = 'none';
             });
         }
