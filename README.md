@@ -5,6 +5,7 @@ share your machines, check out garages, the news, updates, play ***click the dee
 and that's just the first features coming to this website on launch!
 more details coming soon!
 
+*im sorry for the horrendous file organizing it never looks like that in my other projects i swear*
 ---
 
 ## 🎮 join the community!
