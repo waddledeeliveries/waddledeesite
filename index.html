@@ -22,7 +22,7 @@
     <meta property="twitter:description" content="Join the community! Share machines, read the news, click some waddle dees, and explore the waddlOS.">
     <meta property="twitter:image" content="https://github.com/waddledeeliveries/waddledeesite/blob/main/waddlOS1024.png?raw=true">
 
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://waddlewarehouse.onrender.com; media-src 'self' https:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://waddlewarehouse.onrender.com; media-src 'self' https:; frame-src 'self' https://*.firebaseapp.com https://*.google.com;">
     <title>waddlOS - THE Kirby Air Riders Hub</title>
     
     <!-- Firebase SDKs -->
@@ -35,12 +35,12 @@
         // --- config ---
         
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-          apiKey: "AIzaSyBFJEJB3NkTvCbjaHcGWMS2AqQzW3g7FGU",
-          authDomain: "waddledeethesite.firebaseapp.com",
-          projectId: "waddledeethesite",
-          storageBucket: "waddledeethesite.firebasestorage.app",
-          messagingSenderId: "79857052532",
-          appId: "1:79857052532:web:9fbe8e815b6e1dd167da21"
+            apiKey: "PASTE_YOUR_FIREBASE_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.firebasestorage.app", 
+            messagingSenderId: "000000000",
+            appId: "1:00000000:web:00000000"
         };
 
         // finally decided to choose this backend, takes a while to wind up thooo
@@ -226,19 +226,6 @@
             loadUserMachinesForShop(uid);
         }
 
-        const lootTable = [
-            { name: "Warp Star", score: 1, rarity: 1, img: "https://static.wikia.nocookie.net/kirby/images/2/23/Warp_Star_KARs.webp/revision/latest/scale-to-width-down/300?cb=20250819190732&path-prefix=en" },
-            { name: "Winged Star", score: 3, rarity: 1, img: "https://static.wikia.nocookie.net/kirby/images/d/dd/Winged_Star_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20250819190736&path-prefix=en" },
-            { name: "Shadow Star", score: 5, rarity: 1, img: "https://static.wikia.nocookie.net/kirby/images/d/d0/Shadow_Star_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20250819190736&path-prefix=en" },
-            { name: "Rocket Star", score: 8, rarity: 2, img: "https://static.wikia.nocookie.net/kirby/images/9/94/Rocket_Star_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20250819190736&path-prefix=en" },
-            { name: "Swerve Star", score: 10, rarity: 2, img: "https://static.wikia.nocookie.net/kirby/images/5/5e/Swerve_Star_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20250819190738&path-prefix=en" },
-            { name: "Battle Chariot", score: 12, rarity: 3, img: "https://static.wikia.nocookie.net/kirby/images/2/28/Battle_Chariot_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20250819190738&path-prefix=en" },
-            { name: "Jet Star", score: 15, rarity: 3, img: "https://static.wikia.nocookie.net/kirby/images/a/a3/Jet_Star_KAR.webp/revision/latest/scale-to-width-down/1000?cb=20251023151532&path-prefix=en" },
-            { name: "Hop Star", score: 18, rarity: 4, img: "https://static.wikia.nocookie.net/kirby/images/b/b8/Hop_Star.webp/revision/latest/scale-to-width-down/1000?cb=20251023151533&path-prefix=en" },
-            { name: "Transform Star", score: 25, rarity: 5, img: "https://static.wikia.nocookie.net/kirby/images/4/42/Transform_Star_1_KARs.webp/revision/latest/scale-to-width-down/1000?cb=20251026201138&path-prefix=en" },
-            { name: "Dragoon", score: 40, rarity: 5, img: "https://cdn.wikirby.com/7/70/KAR_Dragoon.png?20191003015907" }
-        ];
-
         window.clickDee = async function() {
             const currentUser = window.currentUser;
             if(!currentUser || currentUser.isAnonymous) { window.login(); return; }
@@ -256,10 +243,12 @@
             popup.style.top = '40%';
             stage.appendChild(popup);
 
+            // --- Server Loading UI ---
             popup.textContent = "⏳ Connecting...";
             popup.style.fontSize = "1rem";
             popup.style.color = "#666";
             
+            // "Wind up" timer: if server takes > 2s, show friendly message
             const windUpTimer = setTimeout(() => {
                 popup.textContent = "😴 Waking Server... (approx 15s)";
             }, 2000);
@@ -276,12 +265,13 @@
                     }
                 });
                 
-                clearTimeout(windUpTimer);
+                clearTimeout(windUpTimer); // Server responded, clear "waking" message
 
                 if (!response.ok) throw new Error("Server Error");
                 
                 const data = await response.json();
                 
+                // Reset popup styles for result
                 popup.style.fontSize = ""; 
                 popup.style.color = "";
 
@@ -345,6 +335,7 @@
             e.preventDefault();
             const currentUser = window.currentUser;
             
+            // Basic Checks
             if(!currentUser || currentUser.isAnonymous) { showToast("please sign in with Google first!!"); return; }
             
             const btn = document.getElementById('pubBtn');
@@ -539,14 +530,17 @@
                 
                 await updateProfile(currentUser, { displayName: newName, photoURL: window.selectedIcon });
                 
-                window.updateAuthUI();
+                // --- Instant Visual Refresh Logic ---
+                window.updateAuthUI(); // Update top-right corner immediately
                 
+                // Update all cards belonging to this user
                 const cards = document.querySelectorAll(`.machine-by-${currentUser.uid}`);
                 cards.forEach(card => {
                      const authorSpan = card.querySelector('.machine-author');
                      if(authorSpan) authorSpan.textContent = newName;
                 });
 
+                // Update local data too so filtering doesn't revert it instantly
                 if(window.communityMachinesData) {
                     Object.values(window.communityMachinesData).forEach(m => {
                         if(m.uid === currentUser.uid) m.author = newName;
@@ -1435,6 +1429,7 @@
                             </ol>
                         </div>
 
+                        <!-- COLLAPSIBLE UPLOAD SECTION -->
                         <div id="uploadWrapper" style="display:none;">
                             <div class="upload-header" onclick="window.toggleUpload()">
                                 <h2 style="font-family:'Fredoka'; color:var(--orange-main); margin:0; font-size:1.5rem;">🛠️ Share Your Machine</h2>
